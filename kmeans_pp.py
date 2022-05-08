@@ -11,9 +11,11 @@ def invalid_input():
     print("Invalid Input!")
     sys.exit()
 
+
 def general_error():
     print("An Error Has Occurred")
     sys.exit()
+
 
 class KMeans:
     """
@@ -30,14 +32,15 @@ class KMeans:
         self.data_points = np.array([])  # holding the data points in a dictionary
         self.initialize_data_points()  # read the given data points from the input file into the dictionary
         self.n = self.data_points.shape[0]
-        if  not (1 < self.k < self.n):
+        if not (1 < self.k < self.n):
             invalid_input()
 
         self.centroids = np.array([])  # holding the centroids in a dictionary
 
         self.initialize_centroids()  # initializing the centroids dictionary
-        self.D = np.array([]) # holding the  in a dictionary
+        self.D = np.array([])  # holding the  in a dictionary
         self.P = np.array([])
+
     def initialize_data_points(self, ):
         """
         merge the two input files
@@ -58,10 +61,9 @@ class KMeans:
         min = self.calcDis(data_point, self.centroids[0])
         for i in range(len(self.centroids)):
             dis = self.calcDis(data_point, self.centroids[i])
-            if(dis < min):
+            if (dis < min):
                 min = dis
         return min
-
 
     def k_means_pp(self):
         """
@@ -73,12 +75,13 @@ class KMeans:
         np.append(self.centroids, np.random.choice(self.centroids))  # miu1 randomly selected
         while i < self.k:
             for l in range(self.n):
-               np.append(self.D, self.minDis(self.data_points[l]))
+                np.append(self.D, self.minDis(self.data_points[l]))
             for d in self.D:
                 sum_d = np.sum(self.D)
-                np.append(self.P,[d / sum_d for d in self.D])
+                np.append(self.P, [d / sum_d for d in self.D])
             i += 1
             np.append(self.centroids, np.random.choice(self.n, p=self.P))
+
 
 class InvalidInput(Exception):
     pass
