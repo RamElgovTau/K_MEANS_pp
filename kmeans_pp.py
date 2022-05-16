@@ -15,6 +15,45 @@ def invalid_input():
 def general_error():
     print("An Error Has Occurred")
     sys.exit()
+    
+def isfloat(x):
+    try:
+        float(x)
+        return True
+    except ValueError:
+        return False
+
+parser = argparse.ArgumentParser()
+parser.add_argument("k")
+parser.add_argument("maxIteration", nargs='?', default=300, const=0)
+parser.add_argument("epsilon")
+parser.add_argument("file_name_1", type=str)
+parser.add_argument("file_name_2", type=str)
+args = parser.parse_args()
+k = args.k
+if not (k.isdigit()):
+    print("Invalid Input!")
+    sys.exit()
+k= int(k)
+maxIter = args.maxIteration
+if(maxIter!=300):
+    if not (maxIter.isdigit()):
+        print("Invalid Input!")
+        sys.exit()
+    maxIter = int(maxIter)
+
+if (maxIter <= 0):
+    print("Invalid Input!")
+    sys.exit()
+
+epsilon = args.epsilon
+if not (isfloat(epsilon)):
+    print("Invalid Input!")
+    sys.exit()
+epsilon=float(epsilon)
+if (epsilon < 0):
+    print("Invalid Input!")
+    sys.exit()
 
 
 class KMeans:
