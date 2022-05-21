@@ -186,3 +186,58 @@ int main(int argc, char **argv) {
   fclose(ofp);
   return 0;
 }
+/*-----------------capi------------------*/
+static PyObject *k_meansM(PyObject *self, PyObject *args) {
+    int k, maxIter, n, d;
+    double epsilon;
+    PyObject *mergeList, *centroids;
+    /*
+     * In the C/Python API, a NULL value is never valid for a PyObject*, so it's used to signal that an error has happened.
+     */
+    if (!PyArg_ParseTuple(args, "iiiidOO", &k, &maxIter, &n, &d, &epsilon, &mergeList, &centroids)) {
+        return NULL;
+    }
+    return mainfunc(k, maxIter, n, d, epsilon, mergeList, centroids);
+}
+
+/*
+ * This array tells Python what methods this module has.
+ */
+static PyMethodDef capiMethods[] = {
+        {"k_meansM", /* The Python method name that will be used. */
+         (PyCFunction) k_meansM, /* the C function that implements the Python function and returns static PyObject*. */
+         METH_VARARGS, /* States that the functions has arguments. */
+         PyDoc_STR("k_meansM method") /* The docstring for the function. */
+         },
+        {NULL, NULL, 0, NULL} /* The last entry must be all NULL as shown to act as a sentinel.
+                               * Python looks for this entry to know that all of the functions
+                               * for the module have been defined. */
+};
+
+/*
+ * This initiates the module using the above definitions.
+ */
+static struct PyModuleDef kmeansspModule = {
+        PyModuleDef_HEAD_INIT,
+        "mykmeanssp", /* name of module. */
+        NULL, /* module documentation, may be NULL. */
+        -1, /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+        capiMethods /* the PyMethodDef array from before containing the methods of the extension. */
+};
+
+/*
+ * The PyModuleDef structure, in turn, must be passed to the interpreter in the module's
+ * initialization function. The initialization function must be named PyInit_name(), where
+ * name is the name of the module and should match what we wrote in struct PyModuleDef.
+ * This should be the only non-static item defined in the module file.
+ */
+PyMODINIT_FUNC
+PyInit_mykmeanssp(void) {
+    PyObject * m;
+    m = PyModule_Create(&kmeansspModule);
+    if (!m) {
+        return NULL;
+    }
+    return m;
+}
+
