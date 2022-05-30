@@ -1,15 +1,24 @@
-from setuptools import setup, Extension
-
+from setuptools import setup, find_packages, Extension
 setup(
-    name='mykmeanssp',
-    version='1.0',
-    description='mykmeanssp Module',
-    ext_modules=[
-          Extension(
-                # the qualified name of the extension module to build.
-                'mykmeanssp',
-                # the files to compile into our module relative to "setup.py".
-                sources=['kmeans.c'],
-          ),
+    name = 'mykmeanssp',
+    version = '0.0.1',
+    author = "Ram Elgov and Mohammed Daghash",
+    author_email = "",
+    description = "",
+    install_requires = ['invoke'],
+    packages = find_packages(),
+    license = 'GPL-2',
+    classifiers = [
+        'Development Status :: 3 - Alpha',
+        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: Implementation :: CPython'
+    ],
+    ext_modules = [
+        Extension(
+            'mykmeanssp',
+            ['kmeans.c']
+        )
     ]
 )

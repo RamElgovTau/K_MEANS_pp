@@ -1,13 +1,21 @@
-#include <python.h>
+#define PY_SSIZE_T_CLEAN  /* For all # variants of unit formats (s#, y#, etc.) use Py_ssize_t rather then int */
+#include <Python.h>
 #include <stdio.h>
-#include<math.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 /*********************************
-ram elgov 206867517
-mohammad daghash 314811290
+* ram elgov 206867517
+* mohammad daghash 314811290
 **********************************/
-int is_converged(double *centroids, double *old_centroids, int K, int vector_length) {
+static void free_mat(double** m, int rows) {
+  int i;
+  for (i = 0; i < rows; ++i) {
+    free(m[i]);
+  }
+  free(m);
+}
+static int is_converged(double *centroids, double *old_centroids, int K, int d, double epsilon) {
   int i, j;
   double norm;
   /*
@@ -15,29 +23,29 @@ int is_converged(double *centroids, double *old_centroids, int K, int vector_len
    */
   for (i = 0; i < K; i++) {
     norm = 0;
-    for (j = 0; j < vector_length; j++) {
-      norm += pow(centroids[i * vector_length + j] - old_centroids[i * vector_length + j], 2);
+    for (j = 0; j < d; j++) {
+      norm += pow(centroids[i * d + j] - old_centroids[i * d + j], 2);
     }
     norm = pow(norm, 0.5);
-    if (norm >= 0.001) {
+    if (norm >= epsilon) {
       return 1;
     }
   }
   return 0;
 }
-int indexof_closest_cluster(double *x, double *centroids, int K, int vector_length) {
+static int index_of_closest_cluster(double *x, double *centroids, int K, int d) {
   double min = 0;
   double sum;
   int i, j, index = 0;
   /* minimum initialisation. (the fis  */
-  for (i = 0; i < vector_length; i++) {
+  for (i = 0; i < d; i++) {
     min += pow(x[i] - centroids[i], 2);
   }
   /* checks for the rest of the centroids. */
   for (j = 0; j < K; j++) {
     sum = 0;
-    for (i = 0; i < vector_length; i++) {
-      sum += pow(x[i] - centroids[j * vector_length + i], 2);
+    for (i = 0; i < d; i++) {
+      sum += pow(x[i] - centroids[j * d + i], 2);
     }
     if (sum < min) {
       min = sum;
@@ -46,168 +54,139 @@ int indexof_closest_cluster(double *x, double *centroids, int K, int vector_leng
   }
   return index;
 }
-
-int main(int argc, char **argv) {
-  FILE *ifp, *ofp;
-  double vec = 0;
-  char c;
-  int file_length = 0, vector_length = 0, iteration_num;
-  int valid;
-  int i = 0, j;
-  int maxiter, K, digit_num, counter;
-  double *vectors;
-  double **data_points;
-  double *centroids;
-  double *old_centroids;
-  double *clusters;
-  int *sizeof_clusters;
-  if (argc == 5) {
-    K = atoi(argv[1]);
-    maxiter = atoi(argv[2]);
-    ifp = fopen(argv[3], "r");
-    ofp = fopen(argv[4], "w");
-  } else {
-    K = atoi(argv[1]);
-    maxiter = 200;
-    ifp = fopen(argv[2], "r");
-    ofp = fopen(argv[3], "w");
-  }
-  if(K<=1 || maxiter<=0){
-    printf("Invalid Input!");
-    return 1;
-  }
-  while ((c = fgetc(ifp)) != EOF) {
-    if (c == '\n') {
-      file_length++;
-      vector_length++;
-    }
-    if (c == ',') {
-      vector_length++;
-    }
-  }
-  vector_length = vector_length / file_length;
-  if(K>=file_length){
-    printf("Invalid Input!");
-    return 1;
-  }
-  vectors = calloc(vector_length * file_length, sizeof(double));
-  data_points = calloc(file_length, sizeof(double *));
-  centroids = calloc(K * vector_length, sizeof(double));
-  old_centroids = calloc(K * vector_length, sizeof(double));
-  clusters = calloc(K * vector_length, sizeof(double));
-  sizeof_clusters = calloc(K, sizeof(int));
-  rewind(ifp);
-  while (fscanf(ifp, "%lf,", &vec) != EOF) {
-    vectors[i] = vec;
-    i++;
-  }
-  for (i = 0; i < file_length; i++) {
-    data_points[i] = calloc(vector_length, sizeof(double));
-  }
-  for (i = 0; i < file_length; i++) {
-    for (j = 0; j < vector_length; j++) {
-      data_points[i][j] = vectors[i * vector_length + j];
-    }
-  }
-  for (i = 0; i < vector_length * K; i++) {
-    centroids[i] = vectors[i];
-  }
-  iteration_num = 0;
-  valid = 1;
-  while (iteration_num < maxiter && valid == 1) {
-    for (i = 0; i < K * vector_length; i++) {
-      old_centroids[i] = centroids[i];
-    }
-    for (i = 0; i < file_length; i++) {
-      int index = indexof_closest_cluster(data_points[i], centroids, K, vector_length);
-      for (j = 0; j < vector_length; j++) {
-        clusters[index * vector_length + j] += data_points[i][j];
-      }
-      sizeof_clusters[index]++;
-    }
-    for (j = 0; j < K; j++) {
-      for (i = 0; i < vector_length; i++) {
-        centroids[vector_length * j + i] = clusters[vector_length * j + i] / sizeof_clusters[j];
-      }
-    }
-    for (j = 0; j < K * vector_length; j++) {
-      clusters[j] = 0;
-    }
-    for (j = 0; j < K; j++) {
-      sizeof_clusters[j] = 0;
-    }
-    valid = is_converged(centroids, old_centroids, K, vector_length);
-    iteration_num++;
-  }
-  for (i = 0; i < K; i++) {
-    for (j = 0; j < vector_length; j++) {
-      fprintf(ofp, "%.4f", centroids[i * vector_length + j]);
-      if (j < vector_length - 1) {
-        fprintf(ofp, ",");
-      } else {
-        fprintf(ofp, "\n");
-      }
-    }
-  }
-  counter=0 ;
-  digit_num=strlen(argv[1]);
-  for(i=0;i<digit_num;i++){
-    if((((int)(argv[1][i])-48)<=9) && (((int)(argv[1][i])-48)>=0)){
-      counter++;
-    }
-  }
-  if(digit_num!=counter){
-    printf("Invalid Input!");
-    return 1;
-  }
-  counter=0 ;
-  if(argc==5){
-    digit_num=strlen(argv[2]);
-    for(i=0;i<digit_num;i++){
-      if((((int)(argv[2][i])-48)<=9) && (((int)(argv[2][i])-48)>=0)){
-        counter++;
-      }
-    }
-    if(digit_num!=counter){
-      printf("Invalid Input!");
-      return 1;
-    }
-  }
-  free(clusters);
-  free(sizeof_clusters);
-  free(centroids);
-  free(old_centroids);
-  free(vectors);
-  for (i = 0; i < file_length; i++) {
-    free(data_points[i]);
-  }
-  free(data_points);
-  fclose(ifp);
-  fclose(ofp);
+static double** read_2d_array_from_python(int rows, int cols, PyObject *py_list);
+static PyObject* pass_2d_array_to_python(int rows, int cols, double **arr);
+static int run_kmeans(double** data_points, double** centroids_pp, int n, int d, int k, int max_iter, double epsilon) {
+//  int iteration_num, valid, i, j, t;
+//  double *vectors;
+//  double *centroids;
+//  double *old_centroids;
+//  double *clusters;
+//  int *sizeof_clusters;
+//  centroids = calloc(k * d, sizeof(double));
+//  vectors = calloc(d * n, sizeof(double));
+//  data_points = calloc(n, sizeof(double *));
+//  old_centroids = calloc(k * d, sizeof(double));
+//  clusters = calloc(k * d, sizeof(double));
+//  sizeof_clusters = calloc(k, sizeof(int));
+//
+//  // kmeans++ centroids initialization ------------------------------------------------------
+//  t = 0;
+//  i = 0;
+//  j = 0;
+//  while (t < d * k) {
+//    if (j == d) {
+//      j = 0;
+//      ++i;
+//    }
+//    if(i == k) break;
+//    centroids[t] = centroids_pp[i][j];
+//    ++j;
+//  }
+//  // -----------------------------------------------------------------------------------
+//  iteration_num = 0;
+//  valid = 1;
+//  while (iteration_num < max_iter && valid == 1) {
+//    for (i = 0; i < k * d; i++) {
+//      old_centroids[i] = centroids[i];
+//    }
+//    for (i = 0; i < n; i++) {
+//      int index = index_of_closest_cluster(data_points[i], centroids, k, d);
+//      for (j = 0; j < d; j++) {
+//        clusters[index * d + j] += data_points[i][j];
+//      }
+//      sizeof_clusters[index]++;
+//    }
+//    for (j = 0; j < k; j++) {
+//      for (i = 0; i < d; i++) {
+//        centroids[d * j + i] = clusters[d * j + i] / sizeof_clusters[j];
+//      }
+//    }
+//    for (j = 0; j < k * d; j++) {
+//      clusters[j] = 0;
+//    }
+//    for (j = 0; j < k; j++) {
+//      sizeof_clusters[j] = 0;
+//    }
+//    valid = is_converged(centroids, old_centroids, k, d, epsilon);
+//    iteration_num++;
+//  }
+//  free(clusters);
+//  free(sizeof_clusters);
+//  free(old_centroids);
+//  free(vectors);
+//  for (i = 0; i < n; i++) {
+//    free(data_points[i]);
+//  }
+//  free(data_points);
   return 0;
 }
-/*-----------------capi------------------*/
-static PyObject *k_meansM(PyObject *self, PyObject *args) {
-    int k, maxIter, n, d;
+
+/*-----------------CAPI------------------*/
+static PyObject* fit(PyObject *self, PyObject *args) {
+    int k, max_iter, n, d;
     double epsilon;
-    PyObject *mergeList, *centroids;
+    PyObject *data_points_from_python, *centroids_from_python;
+    double** data_points;
+    double** centroids_pp;
     /*
      * In the C/Python API, a NULL value is never valid for a PyObject*, so it's used to signal that an error has happened.
      */
-    if (!PyArg_ParseTuple(args, "iiiidOO", &k, &maxIter, &n, &d, &epsilon, &mergeList, &centroids)) {
+    if (!PyArg_ParseTuple(args, "iiiidOO", &k, &max_iter, &n, &d, &epsilon,
+     &data_points_from_python, &centroids_from_python)) {
         return NULL;
     }
-    return mainfunc(k, maxIter, n, d, epsilon, mergeList, centroids);
+    data_points = read_2d_array_from_python(n, d, data_points_from_python);
+    centroids_pp = read_2d_array_from_python(k, d, centroids_from_python);
+    if (run_kmeans(data_points, centroids_pp, n, d, k, max_iter, epsilon) != 0) {
+      free_mat(data_points, n);
+      free_mat(centroids_pp, k);
+      return NULL;
+    } else {
+      free_mat(data_points, n);
+      free_mat(centroids_pp, k);
+      return pass_2d_array_to_python(k, d, centroids_pp);
+    }
+}
+static double** read_2d_array_from_python(int rows, int cols, PyObject *py_list) {
+  int i, j;
+  PyObject *row_i, *data;
+  double **arr;
+  arr = calloc(rows, sizeof(double*));
+  for (i = 0; i < rows; ++i) {
+    arr[i] = calloc(cols, sizeof(double));
+    row_i = PyList_GetItem(py_list, i);
+    for (j = 0; j < cols; ++j) {
+      data = PyList_GetItem(row_i, j);
+      arr[i][j] = PyFloat_AsDouble(data);
+    }
+  }
+  return arr;
+}
+
+static PyObject* pass_2d_array_to_python(int rows, int cols, double **arr) {
+  int i, j;
+  PyObject *row_i, *arr_to_python, *data;
+  arr_to_python = PyList_New(rows);
+  for (i = 0; i < rows; ++i) {
+    row_i = PyList_New(cols);
+    for (j = 0; j < cols; ++j) {
+      data = PyFloat_FromDouble(arr[i][j]);
+      PyList_SET_ITEM(row_i, j, data);
+    }
+    PyList_SET_ITEM(arr_to_python, i, row_i);
+  }
+  return arr_to_python;
 }
 
 /*
  * This array tells Python what methods this module has.
  */
 static PyMethodDef capiMethods[] = {
-        {"k_meansM", /* The Python method name that will be used. */
-         (PyCFunction) k_meansM, /* the C function that implements the Python function and returns static PyObject*. */
+        {"fit", /* The Python method name that will be used. */
+         (PyCFunction) fit, /* the C function that implements the Python function and returns static PyObject*. */
          METH_VARARGS, /* States that the functions has arguments. */
-         PyDoc_STR("k_meansM method") /* The docstring for the function. */
+         PyDoc_STR("fit() method") /* The docstring for the function. */
          },
         {NULL, NULL, 0, NULL} /* The last entry must be all NULL as shown to act as a sentinel.
                                * Python looks for this entry to know that all of the functions
