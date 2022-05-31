@@ -148,8 +148,15 @@ def main():
     print_centroid_indices(km)
     print(type(km.centroids))
     print(km.centroids)
-    mykmeanssp.fit(km.k, km.max_iter, km. number_of_rows, km.number_of_cols, km.epsilon,
+    FinalCentroids = mykmeanssp.fit(km.k, km.max_iter, km. number_of_rows, km.number_of_cols, km.epsilon,
                    km.data_points.tolist(), km.centroids.tolist())
+    assert FinalCentroids, "An Error Has Occurred"
+    for i in range(km.k):  # printing the final centroids
+      for j in range(km.number_of_cols):
+        if j != km.number_of_cols - 1:
+            print(str("%.4f" % FinalCentroids[i][j]) + ",", end='')
+        else:
+            print(str("%.4f" % FinalCentroids[i][j]))
 
 if __name__ == '__main__':
     try:
