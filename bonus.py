@@ -24,8 +24,8 @@ def main():
                                     'weight': 'bold'})
     plt.locator_params('x', nbins=10)
     axes = plt.gca()
-    axes.plot(3, 90, 'o', ms=25, mec='black', mfc='none', mew=3)
-    axes.annotate('Elbow Point', weight="bold", xy=(3, 90), xytext=(5, 190), color='black', size='large',
+    axes.plot(2.5, 100, 'o', ms=50, mec='black', mfc='none', mew=3)
+    axes.annotate('Elbow Point', weight="bold", xy=(3, 80), xytext=(5, 190), color='black', size='large',
                   arrowprops=dict(arrowstyle='fancy,tail_width=0.2,head_width=1,head_length=0.8', facecolor='black',
                                   shrinkB=15))
 
