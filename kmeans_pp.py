@@ -5,7 +5,12 @@ import sys
 import numpy as np
 import pandas as pd
 
-
+"""
+@author: mohammad daghash
+@id: 314811290
+@author: ram elgov
+@id: 206867517
+"""
 MAX_ITER = 300
 
 
@@ -28,6 +33,10 @@ def isfloat(x):
 
 
 def parse_input():
+    """
+    gets input from user using terminal, parses and validates the input.
+    @return: a KMeans object with the data provided by the user.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("k")
     parser.add_argument("maxIteration", nargs='?', default=300, const=0)
@@ -60,12 +69,11 @@ def parse_input():
 
 class KMeans:
     """
-    a simple implementation of the K-Means++ algorithm.
-    @authors: Mohammad Daghash & Ram Elgov.
+    data structure to store the required data for the algorithm.
     """
 
-    def __init__(self, K, file_name_1, file_name_2, epsilon, max_iter=MAX_ITER):
-        self.k = K  # number of clusters
+    def __init__(self, k, file_name_1, file_name_2, epsilon, max_iter=MAX_ITER):
+        self.k = k  # number of clusters
         self.max_iter = max_iter  # maximum number of iteration for the algorithm
         self.file_name_1 = file_name_1  # an input file with valid format of data points (text file)
         self.file_name_2 = file_name_2  # an input file to save the results into (text file)
@@ -85,7 +93,7 @@ class KMeans:
 
     def initialize_data_points(self, ):
         """
-        merge the two input files
+        reads and merge the two input files
         :return:
         """
         input_1 = pd.read_csv(self.file_name_1, header=None)
@@ -135,21 +143,28 @@ class Error(Exception):
 
 
 def print_centroid_indices(km):
+    """
+    outputs the final centroids indexes.
+    """
     print(','.join([f"{int(i)}" for i in km.centroids_indices]))
 
 
 def print_output_centroids(km):
-    print(",".join(["{:.4f}".format(centroid) % centroid for centroid in km.output]))
+    """
+    outputs the final centroids calculated by kmeans.c
+    """
+    for centroid in km.output:
+        print(','.join(["%.4f" % coordinate for coordinate in centroid]))
 
 
 def main():
     km = parse_input()
     km.k_means_pp()
     print_centroid_indices(km)
-    print(type(km.centroids))
-    print(km.centroids)
-    mykmeanssp.fit(km.k, km.max_iter, km. number_of_rows, km.number_of_cols, km.epsilon,
-                   km.data_points.tolist(), km.centroids.tolist())
+    km.output = mykmeanssp.fit(km.number_of_rows, km.k, km.max_iter, km.number_of_cols, km.epsilon,
+                               km.centroids.tolist(), km.data_points.tolist())
+    print_output_centroids(km)
+
 
 if __name__ == '__main__':
     try:

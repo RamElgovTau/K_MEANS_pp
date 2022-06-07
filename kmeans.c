@@ -1,14 +1,24 @@
-#define PY_SSIZE_T_CLEAN  /* For all # variants of unit formats (s#, y#, etc.) use Py_ssize_t rather then int */
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
-#include <string.h>
-/*********************************
-* ram elgov 206867517
-* mohammad daghash 314811290
-**********************************/
-static void free_mat(double** m, int rows) {
+/******************************************************************************
+
+@author: mohammad daghash
+@id: 314811290
+@author: ram elgov
+@id: 206867517
+
+Implementation of the KMEANS algorithm from HW1.
+Minor changes was added to support the interaction with the C API
+and the input from python. The use of KMEANS++ initial centroids was added too.
+
+*******************************************************************************/
+
+static void free_2d_arr(double** m, int rows) {
+/*
+function to free memory allocated for 2d array.
+*/
   int i;
   for (i = 0; i < rows; ++i) {
     free(m[i]);
@@ -16,6 +26,9 @@ static void free_mat(double** m, int rows) {
   free(m);
 }
 static int is_converged(double *centroids, double *old_centroids, int K, int d, double epsilon) {
+/*
+checks if the convergence criteria has been reached.
+*/
   int i, j;
   double norm;
   /*
@@ -34,6 +47,9 @@ static int is_converged(double *centroids, double *old_centroids, int K, int d, 
   return 0;
 }
 static int index_of_closest_cluster(double *x, double *centroids, int K, int d) {
+/*
+calculating the index of the closest cluster to the given data point.
+*/
   double min = 0;
   double sum;
   int i, j, index = 0;
@@ -54,169 +70,173 @@ static int index_of_closest_cluster(double *x, double *centroids, int K, int d) 
   }
   return index;
 }
-static double** read_2d_array_from_python(int rows, int cols, PyObject *py_list);
-static PyObject* pass_2d_array_to_python(int rows, int cols, double **arr);
-static int run_kmeans(double** data_points, double** centroids_pp, int n, int d, int k, int max_iter, double epsilon) {
-//  int iteration_num, valid, i, j, t;
-//  double *vectors;
-//  double *centroids;
-//  double *old_centroids;
-//  double *clusters;
-//  int *sizeof_clusters;
-//  centroids = calloc(k * d, sizeof(double));
-//  vectors = calloc(d * n, sizeof(double));
-//  data_points = calloc(n, sizeof(double *));
-//  old_centroids = calloc(k * d, sizeof(double));
-//  clusters = calloc(k * d, sizeof(double));
-//  sizeof_clusters = calloc(k, sizeof(int));
-//
-//  // kmeans++ centroids initialization ------------------------------------------------------
-//  t = 0;
-//  i = 0;
-//  j = 0;
-//  while (t < d * k) {
-//    if (j == d) {
-//      j = 0;
-//      ++i;
-//    }
-//    if(i == k) break;
-//    centroids[t] = centroids_pp[i][j];
-//    ++j;
-//  }
-//  // -----------------------------------------------------------------------------------
-//  iteration_num = 0;
-//  valid = 1;
-//  while (iteration_num < max_iter && valid == 1) {
-//    for (i = 0; i < k * d; i++) {
-//      old_centroids[i] = centroids[i];
-//    }
-//    for (i = 0; i < n; i++) {
-//      int index = index_of_closest_cluster(data_points[i], centroids, k, d);
-//      for (j = 0; j < d; j++) {
-//        clusters[index * d + j] += data_points[i][j];
-//      }
-//      sizeof_clusters[index]++;
-//    }
-//    for (j = 0; j < k; j++) {
-//      for (i = 0; i < d; i++) {
-//        centroids[d * j + i] = clusters[d * j + i] / sizeof_clusters[j];
-//      }
-//    }
-//    for (j = 0; j < k * d; j++) {
-//      clusters[j] = 0;
-//    }
-//    for (j = 0; j < k; j++) {
-//      sizeof_clusters[j] = 0;
-//    }
-//    valid = is_converged(centroids, old_centroids, k, d, epsilon);
-//    iteration_num++;
-//  }
-//  free(clusters);
-//  free(sizeof_clusters);
-//  free(old_centroids);
-//  free(vectors);
-//  for (i = 0; i < n; i++) {
-//    free(data_points[i]);
-//  }
-//  free(data_points);
+static int run(double** data_points, double** centroids_pp, int n, int d, int k, int max_iter, double epsilon) {
+/*
+the main clustering algorithm using kmeans.
+same implementation from HW1 except using kmeans++ and data parsing implemented in python.
+*/
+  int iteration_num, valid, i, j, t;
+  double *vectors;
+  double *centroids;
+  double *old_centroids;
+  double *clusters;
+  int *sizeof_clusters;
+  centroids = calloc(k * d, sizeof(double));
+  vectors = calloc(d * n, sizeof(double));
+  old_centroids = calloc(k * d, sizeof(double));
+  clusters = calloc(k * d, sizeof(double));
+  sizeof_clusters = calloc(k, sizeof(int));
+
+  // kmeans++ centroids initialization ------------------------------------------------------
+  t = 0;
+  i = 0;
+  j = 0;
+  while (t < d * k) {
+    if (j == d) {
+      j = 0;
+      ++i;
+    }
+    if(i == k) break;
+    centroids[t] = centroids_pp[i][j];
+    ++j;
+    ++t;
+  }
+  // -----------------------------------------------------------------------------------
+  iteration_num = 0;
+  valid = 1;
+  while (iteration_num < max_iter && valid == 1) {
+    for (i = 0; i < k * d; i++) {
+      old_centroids[i] = centroids[i];
+    }
+    for (i = 0; i < n; i++) {
+      int index = index_of_closest_cluster(data_points[i], centroids, k, d);
+      for (j = 0; j < d; j++) {
+        clusters[index * d + j] += data_points[i][j];
+      }
+      sizeof_clusters[index]++;
+    }
+    for (j = 0; j < k; j++) {
+      for (i = 0; i < d; i++) {
+        centroids[d * j + i] = clusters[d * j + i] / sizeof_clusters[j];
+      }
+    }
+    for (j = 0; j < k * d; j++) {
+      clusters[j] = 0;
+    }
+    for (j = 0; j < k; j++) {
+      sizeof_clusters[j] = 0;
+    }
+    valid = is_converged(centroids, old_centroids, k, d, epsilon);
+    iteration_num++;
+  }
+  t = 0;
+  i = 0;
+  j = 0;
+  while (t < d * k) {
+    if (j == d) {
+      j = 0;
+      ++i;
+    }
+    if(i == k) break;
+    centroids_pp[i][j] = centroids[t];
+    ++j;
+    ++t;
+  }
+  free(clusters);
+  free(sizeof_clusters);
+  free(centroids);
+  free(old_centroids);
+  free(vectors);
   return 0;
 }
-
-/*-----------------CAPI------------------*/
+/*
+C API code
+*/
+static double** get_from_python(int num_of_elements, int dim, PyObject *python_list){
+/*
+parse python list input into 2d array.
+*/
+    int i, j;
+    double **matrix;
+    PyObject *temp_list, *element;
+    matrix = calloc(num_of_elements, sizeof(double*));
+    for (i = 0; i < num_of_elements; i++){
+        matrix[i] = calloc(dim, sizeof(double));
+        temp_list = PyList_GetItem(python_list, i);
+        for (j = 0; j < dim; j++){
+            element = PyList_GetItem(temp_list, j);
+            matrix[i][j] = PyFloat_AsDouble(element);
+        }
+    }
+    return matrix;
+}
+static PyObject* send_to_python(double** centroids, int K, int dim){
+/*
+send the final centroids to python as a list object.
+*/
+    int i, j;
+    PyObject* outer_list;
+    PyObject* inner_list;
+    PyObject* element;
+    outer_list = PyList_New(K);
+    for (i = 0; i < K; i++){
+        inner_list = PyList_New(dim);
+        for (j = 0; j < dim; j++){
+            element = PyFloat_FromDouble(centroids[i][j]);
+            PyList_SET_ITEM(inner_list, j, element);
+        }
+        PyList_SET_ITEM(outer_list, i, inner_list);
+    }
+    return outer_list;
+}
 static PyObject* fit(PyObject *self, PyObject *args) {
-    int k, max_iter, n, d;
+/*
+the algorithm's fit() function. calls run() and return the output back to python.
+*/
+    PyObject *output, *data_points_list, *centroid_list;
+    int N, K, max_iter, dim;
+    double **centroids, **data_points;
     double epsilon;
-    PyObject *data_points_from_python, *centroids_from_python;
-    double** data_points;
-    double** centroids_pp;
-    /*
-     * In the C/Python API, a NULL value is never valid for a PyObject*, so it's used to signal that an error has happened.
-     */
-    if (!PyArg_ParseTuple(args, "iiiidOO", &k, &max_iter, &n, &d, &epsilon,
-     &data_points_from_python, &centroids_from_python)) {
+    if (!PyArg_ParseTuple(args, "iiiidOO", &N, &K, &max_iter, &dim, &epsilon,
+    &centroid_list, &data_points_list)){
         return NULL;
     }
-    data_points = read_2d_array_from_python(n, d, data_points_from_python);
-    centroids_pp = read_2d_array_from_python(k, d, centroids_from_python);
-    if (run_kmeans(data_points, centroids_pp, n, d, k, max_iter, epsilon) != 0) {
-      free_mat(data_points, n);
-      free_mat(centroids_pp, k);
-      return NULL;
-    } else {
-      free_mat(data_points, n);
-      free_mat(centroids_pp, k);
-      return pass_2d_array_to_python(k, d, centroids_pp);
+    data_points = get_from_python(N, dim, data_points_list);
+    centroids = get_from_python(K, dim, centroid_list);
+    if (run(data_points, centroids, N, dim, K, max_iter, epsilon))
+    {
+        free_2d_arr(data_points, N);
+        free_2d_arr(centroids, K);
+        return NULL;
+    }
+    else {
+        output = send_to_python(centroids, K, dim);
+        free_2d_arr(data_points, N);
+        free_2d_arr(centroids, K);
+        return output;
     }
 }
-static double** read_2d_array_from_python(int rows, int cols, PyObject *py_list) {
-  int i, j;
-  PyObject *row_i, *data;
-  double **arr;
-  arr = calloc(rows, sizeof(double*));
-  for (i = 0; i < rows; ++i) {
-    arr[i] = calloc(cols, sizeof(double));
-    row_i = PyList_GetItem(py_list, i);
-    for (j = 0; j < cols; ++j) {
-      data = PyList_GetItem(row_i, j);
-      arr[i][j] = PyFloat_AsDouble(data);
-    }
-  }
-  return arr;
-}
-
-static PyObject* pass_2d_array_to_python(int rows, int cols, double **arr) {
-  int i, j;
-  PyObject *row_i, *arr_to_python, *data;
-  arr_to_python = PyList_New(rows);
-  for (i = 0; i < rows; ++i) {
-    row_i = PyList_New(cols);
-    for (j = 0; j < cols; ++j) {
-      data = PyFloat_FromDouble(arr[i][j]);
-      PyList_SET_ITEM(row_i, j, data);
-    }
-    PyList_SET_ITEM(arr_to_python, i, row_i);
-  }
-  return arr_to_python;
-}
-
 /*
- * This array tells Python what methods this module has.
- */
+the functions below are simple C/API configurators.
+*/
 static PyMethodDef capiMethods[] = {
-        {"fit", /* The Python method name that will be used. */
-         (PyCFunction) fit, /* the C function that implements the Python function and returns static PyObject*. */
-         METH_VARARGS, /* States that the functions has arguments. */
-         PyDoc_STR("fit() method") /* The docstring for the function. */
-         },
-        {NULL, NULL, 0, NULL} /* The last entry must be all NULL as shown to act as a sentinel.
-                               * Python looks for this entry to know that all of the functions
-                               * for the module have been defined. */
+    {"fit", (PyCFunction) fit, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
 };
-
-/*
- * This initiates the module using the above definitions.
- */
-static struct PyModuleDef kmeansspModule = {
-        PyModuleDef_HEAD_INIT,
-        "mykmeanssp", /* name of module. */
-        NULL, /* module documentation, may be NULL. */
-        -1, /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
-        capiMethods /* the PyMethodDef array from before containing the methods of the extension. */
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "mykmeanssp",
+    NULL,
+    -1,
+    capiMethods
 };
-
-/*
- * The PyModuleDef structure, in turn, must be passed to the interpreter in the module's
- * initialization function. The initialization function must be named PyInit_name(), where
- * name is the name of the module and should match what we wrote in struct PyModuleDef.
- * This should be the only non-static item defined in the module file.
- */
 PyMODINIT_FUNC
-PyInit_mykmeanssp(void) {
-    PyObject * m;
-    m = PyModule_Create(&kmeansspModule);
-    if (!m) {
+PyInit_mykmeanssp(void)
+{
+    PyObject *m;
+    m = PyModule_Create(&moduledef);
+    if (!m){
         return NULL;
     }
     return m;
 }
-
